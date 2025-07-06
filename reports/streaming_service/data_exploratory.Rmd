@@ -62,7 +62,9 @@ library(dplyr)
 
 This report explores a customer subscription dataset from StreamWorld, a fictional streaming service. The aim is to uncover patterns related to customer churn and provide insights to support both strategic business decisions and the development of predictive models.
 
-Access to real customer data is often limited due to privacy concerns and confidentiality constraints. To address this, a realistic synthetic dataset was generated using ChatGPT, simulating genuine user behaviors and business conditions. This approach allows for meaningful analysis while avoiding the ethical and legal issues associated with using real-world proprietary data.
+Access to real customer data is often limited due to privacy concerns and confidentiality constraints. To address this, a synthetic dataset was generated using ChatGPT, simulating genuine user behaviors and business conditions. This approach allows for meaningful analysis while avoiding the ethical and legal issues associated with using real-world proprietary data.
+
+The dataset is designed to mimic real-world scenarios but contains some discrepancies and lacks business logic in calculations. We will make reasonable assumptions during analysis to provide practical business insights.
 
 Customer churn was chosen as the central theme of this report because it poses a significant challenge for subscription-based businesses. Retaining existing customers is generally more cost-effective than acquiring new ones, and understanding the drivers of churn is essential for maintaining sustainable growth, maximizing customer lifetime value, and improving profitability.
 
@@ -84,6 +86,38 @@ Datasets often include a large number of features, not all of which contribute m
 
 In this project, our goal is to predict customer churn, so we first perform feature engineering to create useful new variables, and then we focus on feature selection to identify the most relevant ones for the churn outcome.
 
+### Create new variables which are not in the dataset
+
+Based on the dataset, certain variables can be derived from the available data.
+
+### Tenure
+
+Description: This represents the number of days a customer has been with the service. It is calculated as the time between the date they joined (JoinDate) and their most recent login (LastLoginDate).
+
+```{r}
+streaming_data <- streaming_data %>%
+  mutate(TenureDays = as.numeric(difftime(LastLoginDate, JoinDate, units = "days")),
+         TenureMonths = round(TenureDays / 30, 1))
+```
+
+### Revenue Earned for each customer
+
+Description: Revenue based on MonthlyFee and PaymentFrequency.
+
+```{r}
+streaming_data <- streaming_data %>%
+  mutate(
+    Revenue = case_when(
+      PaymentFrequency == "Monthly" ~ MonthlyFee,
+      PaymentFrequency == "Quarterly" ~ MonthlyFee * 3,
+      PaymentFrequency == "Annual" ~ MonthlyFee * 12,
+      TRUE ~ NA_real_
+    )
+  )
+```
+
+### Rank features and select the most relevant variables
+
 We will apply a filter method using the mlr3 library in R. Specifically, we use information gain to rank features based on their importance, helping us select the most relevant ones for our classification task. Since there are 1692 "not cancelled" and 683 "cancelled" records, the dataset has a class imbalance of about 71% vs 29%, which is noticeable but not extreme. This level can still affect filter-based feature selection methods like information_gain, especially if the features don't strongly differentiate the classes. We will try applying a class balancing technique like SMOTE. before using information gain filter.
 
 ```{r}
@@ -91,9 +125,7 @@ We will apply a filter method using the mlr3 library in R. Specifically, we use 
 transformed_data <- streaming_data
 
 # Transform date fields
-transformed_data$Tenure <- as.numeric(Sys.Date() - as.Date(transformed_data$JoinDate))
 transformed_data$JoinDate <- NULL
-transformed_data$Recency <- as.numeric(Sys.Date() - as.Date(transformed_data$LastLoginDate))
 transformed_data$LastLoginDate <- NULL
 
 # Drop identifier columns
@@ -155,7 +187,7 @@ print(importance_table[order(-score)])
 autoplot(streaming_feature_importance)
 ```
 
-Based on the feature importance scores in the provided chart, the features with a score of zero such as Tenure, TotalWatchTime, Recency, LoyaltyPoints and MonthlyFee should be excluded from the analysis. The remaining features, including Region, Country, PreferredDevice, Gender, SubscriptionType, PaymentFrequency, PaymentMethod, Age, NumSupportTickets and ReferalSource, exhibit non-zero scores and should be retained for further investigation.
+Based on the feature importance scores in the provided chart, the features with a score of zero such as MonthlyFee, TenureMonths, TenureDays, LoyaltyPoints, Revenue and TotalWatchTime should be excluded from the analysis. The remaining features, including Region, Country, PreferredDevice, Gender, SubscriptionType, PaymentFrequency, PaymentMethod, Age, NumSupportTickets and ReferalSource, exhibit non-zero scores and should be retained for further investigation.
 
 ## 4. What Drives a Customer to Cancel?
 
