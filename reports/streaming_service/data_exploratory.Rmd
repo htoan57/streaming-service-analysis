@@ -102,18 +102,11 @@ streaming_data <- streaming_data %>%
 
 ### Revenue Earned for each customer
 
-Description: Revenue based on MonthlyFee and PaymentFrequency.
+Description: Revenue based on MonthlyFee and TenureMonths.
 
 ```{r}
 streaming_data <- streaming_data %>%
-  mutate(
-    Revenue = case_when(
-      PaymentFrequency == "Monthly" ~ MonthlyFee,
-      PaymentFrequency == "Quarterly" ~ MonthlyFee * 3,
-      PaymentFrequency == "Annual" ~ MonthlyFee * 12,
-      TRUE ~ NA_real_
-    )
-  )
+  mutate(Revenue = MonthlyFee * TenureMonths)
 ```
 
 ### Rank features and select the most relevant variables
